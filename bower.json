@@ -1,0 +1,28 @@
+{
+  "name": "purescript-ace-halogen",
+  "homepage": "https://github.com/slamdata/purescript-ace-halogen",
+  "authors": [
+    "Gary Burgess <gary.burgess@gmail.com>"
+  ],
+  "description": "A Halogen component for the Ace editor",
+  "keywords": [
+    "purescript",
+    "halogen",
+    "ace"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/slamdata/purescript-ace-halogen.git"
+  },
+  "license": "Apache 2.0",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test"
+  ],
+  "dependencies": {
+    "purescript-ace": "^0.8.0",
+    "purescript-halogen": "^0.5.6"
+  }
+}
