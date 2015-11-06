@@ -12,18 +12,23 @@ import Control.Monad.Eff.Class (MonadEff)
 
 import Data.Maybe (Maybe(..))
 
-import Halogen (Natural(), Component(), ComponentHTML(), ComponentDSL(), SlotConstructor(..), component, action, liftEff', modify, gets)
+import Halogen (Natural(), Component(), ComponentHTML(), ComponentDSL(), SlotConstructor(..), component, action, liftEff', liftH, modify, gets)
 import Halogen.HTML.Indexed as H
 import Halogen.HTML.Properties.Indexed as P
 
-import Ace.Types (ACE())
+import Ace.Types (ACE(), Editor())
 import Ace.Editor as Editor
 import Ace.Halogen.Component.Query
 import Ace.Halogen.Component.State
 
 -- | The Ace component.
-aceComponent :: forall g eff. (MonadEff (ace :: ACE | eff) g) => Maybe String -> Component AceState AceQuery g
-aceComponent initialText = component render eval
+aceComponent
+  :: forall g eff
+   . (MonadEff (ace :: ACE | eff) g)
+  => (Editor -> g Unit)
+  -> Maybe String
+  -> Component AceState AceQuery g
+aceComponent setup initialText = component render eval
   where
 
   render :: AceState -> ComponentHTML AceQuery
@@ -36,6 +41,7 @@ aceComponent initialText = component render eval
     case initialText of
       Nothing -> pure unit
       Just text -> void $ liftEff' $ Editor.setValue text Nothing editor
+    liftH $ setup editor
     pure next
   eval (GetText k) = do
     state <- gets runAceState
@@ -55,5 +61,15 @@ aceComponent initialText = component render eval
 
 -- | A convenience function for creating a `SlotConstructor` for an Ace
 -- | component.
-aceConstructor :: forall g p eff. (MonadEff (ace :: ACE | eff) g) => p -> Maybe String -> SlotConstructor AceState AceQuery g p
-aceConstructor p initialText = SlotConstructor p \_ -> { component: aceComponent initialText, initialState: initialAceState }
+aceConstructor
+  :: forall g p eff
+   . (MonadEff (ace :: ACE | eff) g)
+  => (Editor -> g Unit)
+  -> p
+  -> Maybe String
+  -> SlotConstructor AceState AceQuery g p
+aceConstructor setup p initialText =
+  SlotConstructor p \_ ->
+    { component: aceComponent setup initialText
+    , initialState: initialAceState
+    }
