@@ -9,6 +9,6 @@
     "rimraf": "^2.4.3"
   },
   "dependencies": {
-    "purescript": "^0.7.5"
+    "purescript": "^0.7.6"
   }
 }

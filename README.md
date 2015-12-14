@@ -15,5 +15,8 @@ bower install purescript-ace-halogen
 ## Module documentation
 
 - [Ace.Halogen.Component](docs/Ace/Halogen/Component.md)
-- [Ace.Halogen.Component.Query](docs/Ace/Halogen/Component/Query.md)
-- [Ace.Halogen.Component.State](docs/Ace/Halogen/Component/State.md)
+
+
+## Notes
+
+Please add `Halogen.Component.Properties.key` or `Halogen.Component.Properties.Indexed.key` to wrappers of `Ace.Halogen.Component` if you need to use multiple editors on one page.
