@@ -58,6 +58,12 @@ Ace component state
 `key` -- unique key of this instance
 `editor` -- ace editor instance wrapped by this component
 
+#### `initialAceState`
+
+``` purescript
+initialAceState :: AceState
+```
+
 #### `aceComponent`
 
 ``` purescript
