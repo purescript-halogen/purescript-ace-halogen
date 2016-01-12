@@ -18,4 +18,4 @@ Ace components may not behave correctly without a `key` property specified for t
 
 ## Documentation
 
-Module documentation is [published on Pursuit](http://pursuit.purescript.org/packages/purescript-halogen-css).
+Module documentation is [published on Pursuit](http://pursuit.purescript.org/packages/purescript-ace-halogen).
