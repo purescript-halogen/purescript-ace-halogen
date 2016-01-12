@@ -1,6 +1,7 @@
 module Ace.Halogen.Component
   ( aceComponent
   , aceConstructor
+  , initialAceState
   , AceEffects()
   , Autocomplete(..)
   , AceState(..)
