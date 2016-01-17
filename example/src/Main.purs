@@ -78,7 +78,7 @@ ui = parentComponent render eval
                 [ H.text state.text ]
             ]
 
-    eval :: Natural Query (ParentDSL State AceState Query AceQuery MainAff AceSlot)
+    eval :: EvalParent Query State AceState Query AceQuery MainAff AceSlot
     eval (UpdateText next) = do
         pure next
 
