@@ -4,7 +4,7 @@ import Prelude
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceState (), AceQuery ())
+import Ace.Halogen.Component (AceState (), AceQuery (), initialAceState)
 import qualified Ace.Halogen.Component as Ace
 
 import Control.Monad.Aff (Aff (), runAff)
@@ -72,7 +72,7 @@ ui = parentComponent render eval
                         )
                         Nothing
                 , initialState :
-                    { key : Nothing, editor : Nothing }
+                    initialAceState
                 }
             , H.div_
                 [ H.text state.text ]
