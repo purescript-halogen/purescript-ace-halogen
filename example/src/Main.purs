@@ -88,7 +88,6 @@ ui = parentComponent' render eval peek
             TextChanged _ -> do
                 text <- query AceSlot $ request GetText
                 modify (_ { text = fromMaybe "" text })
-                pure unit
             _ ->
                 pure unit
 
