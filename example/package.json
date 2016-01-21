@@ -1,0 +1,25 @@
+{
+  "name": "Halogen Ace Example",
+  "license": "Apache 2.0",
+  "repository": "",
+  "private": true,
+  "contributors": [ ],
+  "main": "main.js",
+  "scripts": {
+    "postinstall": "bower install",
+    "build": "gulp"
+  },
+  "devDependencies": {
+    "bower": "^1.4.1",
+    "gulp": "^3.8.11",
+    "gulp-jscs": "^1.6.0",
+    "gulp-jshint": "^1.11.2",
+    "gulp-purescript": "^0.7.0",
+    "purescript": "^0.7.6",
+    "rimraf": "^2.4.1",
+    "webpack-stream": "^2.0.0"
+  },
+  "dependencies": {
+    "virtual-dom": "^2.0.1"
+  }
+}
