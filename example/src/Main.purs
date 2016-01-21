@@ -4,7 +4,7 @@ import Prelude
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceState (), AceQuery (), initialAceState)
+import Ace.Halogen.Component (AceState (), AceQuery (TextChanged, GetText), initialAceState)
 import qualified Ace.Halogen.Component as Ace
 
 import Control.Monad.Aff (Aff (), runAff)
@@ -14,7 +14,7 @@ import Control.Monad.Eff.Exception (throwException)
 import Control.Plus (Plus)
 
 import Data.Functor.Coproduct (Coproduct())
-import Data.Maybe (Maybe (..))
+import Data.Maybe (Maybe (..), fromMaybe)
 
 import Halogen
 import Halogen.Util (appendToBody, onLoad)
@@ -55,7 +55,7 @@ type MainEffects = HalogenEffects (random :: RANDOM, now :: Now, ref :: REF, ace
 type MainAff = Aff MainEffects
 
 ui :: Component (StateP MainAff) QueryP MainAff
-ui = parentComponent render eval
+ui = parentComponent' render eval peek
     where
 
     render :: State -> MainHtml MainAff
@@ -81,6 +81,16 @@ ui = parentComponent render eval
     eval :: EvalParent Query State AceState Query AceQuery MainAff AceSlot
     eval (UpdateText next) = do
         pure next
+
+    peek :: Peek (ChildF AceSlot AceQuery) State AceState Query AceQuery MainAff AceSlot
+    peek (ChildF p q) =
+        case q of
+            TextChanged _ -> do
+                text <- query AceSlot $ request GetText
+                modify (_ { text = fromMaybe "" text })
+                pure unit
+            _ ->
+                pure unit
 
 main :: Eff MainEffects Unit
 main = runAff throwException (const (pure unit)) $ do
