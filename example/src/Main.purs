@@ -4,8 +4,7 @@ import Prelude
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceState (), AceQuery (TextChanged, GetText), initialAceState)
-import qualified Ace.Halogen.Component as Ace
+import Ace.Halogen.Component (AceState (), AceQuery (TextChanged, GetText), aceConstructor)
 
 import Control.Monad.Aff (Aff (), runAff)
 import Control.Monad.Eff (Eff ())
@@ -23,7 +22,7 @@ import qualified Halogen.HTML.Indexed as H
 -- Effects
 import Control.Monad.Eff.Random (RANDOM ())
 import Control.Monad.Eff.Ref (REF ())
-import Ace.Types (ACE ())
+import Ace.Types (ACE (), Editor ())
 import Data.Date (Now ())
 
 
@@ -61,22 +60,17 @@ ui = parentComponent' render eval peek
     render :: State -> MainHtml MainAff
     render state =
         H.div_
-            [ H.slot AceSlot \_ ->
-                { component :
-                    Ace.aceComponent
-                        (\editor -> liftEff $ do
-                            session <- Editor.getSession editor
-                            Session.setMode "ace/mode/yaml" session
-                            Editor.setValue state.text Nothing editor
-                            pure unit
-                        )
-                        Nothing
-                , initialState :
-                    initialAceState
-                }
+            [ H.Slot $ aceConstructor AceSlot (initEditor state) Nothing
             , H.div_
                 [ H.text state.text ]
             ]
+
+    initEditor :: State -> Editor -> MainAff Unit
+    initEditor state editor = liftEff $ do
+        session <- Editor.getSession editor
+        Session.setMode "ace/mode/yaml" session
+        Editor.setValue state.text Nothing editor
+        pure unit
 
     eval :: EvalParent Query State AceState Query AceQuery MainAff AceSlot
     eval (UpdateText next) = do
