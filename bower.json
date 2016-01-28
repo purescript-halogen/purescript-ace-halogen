@@ -27,6 +27,7 @@
     "purescript-refs": "^0.2.0",
     "purescript-datetime": "^0.9.1",
     "purescript-random": "^0.2.3",
-    "purescript-ace": "~0.11.0"
+    "purescript-ace": "~0.11.0",
+    "purescript-sets": "^0.5.7"
   }
 }
