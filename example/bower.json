@@ -1,19 +1,8 @@
 {
-  "name": "Halogen Ace Example",
-  "version": "1.0.0",
-  "moduleType": [
-    "node"
-  ],
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components",
-    "output"
-  ],
+  "name": "purescript-ace-halogen-example",
+  "private": true,
   "dependencies": {
-    "purescript-console": "^0.1.0",
-    "purescript-halogen": "~0.5.8",
-    "purescript-ace-halogen": "0.4.0",
-    "ace-builds": "~1.2.2"
+    "purescript-ace-halogen": "*",
+    "ace-builds": "^1.2.2"
   }
 }

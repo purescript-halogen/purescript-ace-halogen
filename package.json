@@ -1,10 +1,16 @@
 {
   "private": true,
   "scripts": {
-    "build": "pulp build"
+    "clean": "rimraf output && rimraf .pulp-cache",
+    "build": "pulp build",
+    "example": "bower link && cd example && bower link purescript-ace-halogen && npm run build"
+  },
+  "dependencies": {
+    "virtual-dom": "^2.1.1"
   },
   "devDependencies": {
-    "pulp": "^7.0.0",
-    "purescript": "^0.7.6"
+    "pulp": "^8.1.0",
+    "purescript": "^0.7.6",
+    "rimraf": "^2.5.2"
   }
 }
