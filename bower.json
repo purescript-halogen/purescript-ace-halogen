@@ -25,7 +25,7 @@
   "dependencies": {
     "purescript-ace": "^0.11.0",
     "purescript-datetime": "^0.9.1",
-    "purescript-halogen": "^0.6.1",
+    "purescript-halogen": "^0.7.0",
     "purescript-random": "^0.2.3",
     "purescript-refs": "^0.2.0"
   }
