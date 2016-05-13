@@ -4,31 +4,31 @@ module Ace.Halogen.Component
   , AceQuery(..)
   , AceState(..)
   , initialAceState
-  , AceEffects()
+  , AceEffects
   , Autocomplete(..)
-  , CompleteFn()
+  , CompleteFn
   ) where
 
 import Prelude
 
 import Control.Monad (when)
-import Control.Monad.Aff (Aff(), runAff)
-import Control.Monad.Aff.AVar (AVAR())
-import Control.Monad.Eff (Eff())
-import Control.Monad.Eff.Random (random, RANDOM())
-import Control.Monad.Eff.Ref (Ref(), REF(), readRef, writeRef, modifyRef)
+import Control.Monad.Aff (Aff, runAff)
+import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Random (random, RANDOM)
+import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
 
-import Data.Date (nowEpochMilliseconds, Now())
+import Data.Date (nowEpochMilliseconds, Now)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(..), maybe)
-import Data.NaturalTransformation (Natural())
-import Data.StrMap (StrMap())
+import Data.NaturalTransformation (Natural)
+import Data.StrMap (StrMap)
 import Data.StrMap as Sm
 import Data.Time (Milliseconds(..))
 
-import DOM (DOM())
-import DOM.HTML.Types (HTMLElement())
+import DOM (DOM)
+import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -38,7 +38,7 @@ import Ace.Editor as Editor
 import Ace.EditSession as Session
 import Ace.Ext.LanguageTools as LanguageTools
 import Ace.Ext.LanguageTools.Completer as Completer
-import Ace.Types (Editor(), Completion(), Position(), EditSession(), ACE())
+import Ace.Types (Editor, Completion, Position, EditSession, ACE)
 
 -- | Effectful knot of autocomplete functions. It's needed because
 -- | `languageTools.addCompleter` is global and adds completer to
