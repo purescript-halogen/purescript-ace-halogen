@@ -2,17 +2,15 @@ module Main where
 
 import Prelude
 
-import Control.Bind ((=<<))
-import Control.Monad.Aff (Aff())
-import Control.Monad.Eff (Eff())
+import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Random (RANDOM())
-import Control.Monad.Eff.Ref (REF())
+import Control.Monad.Eff.Random (RANDOM)
+import Control.Monad.Eff.Ref (REF)
+import Control.Monad.Eff.Now (NOW)
 
-import Data.Date (Now())
-import Data.Functor.Coproduct (Coproduct())
+import Data.Functor.Coproduct (Coproduct)
 import Data.Maybe (Maybe (..), fromMaybe)
-import Data.NaturalTransformation (Natural())
 
 import Halogen as H
 import Halogen.HTML.Indexed as HH
@@ -20,8 +18,8 @@ import Halogen.Util (runHalogenAff, awaitBody)
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceState(), AceQuery (TextChanged, GetText), aceConstructor)
-import Ace.Types (ACE(), Editor())
+import Ace.Halogen.Component (AceState, AceQuery (TextChanged, GetText), aceConstructor)
+import Ace.Types (ACE, Editor)
 
 data Query a
   = UpdateText a
@@ -40,7 +38,7 @@ type AceSlot = Unit
 type StateP g = H.ParentState State AceState Query AceQuery g AceSlot
 type QueryP = Coproduct Query (H.ChildF AceSlot AceQuery)
 type MainHtml g = H.ParentHTML AceState Query AceQuery g AceSlot
-type MainEffects = H.HalogenEffects (random :: RANDOM, now :: Now, ref :: REF, ace :: ACE)
+type MainEffects = H.HalogenEffects (random :: RANDOM, now :: NOW, ref :: REF, ace :: ACE)
 type MainAff = Aff MainEffects
 type MainDSL = H.ParentDSL State AceState Query AceQuery MainAff AceSlot
 
@@ -62,7 +60,7 @@ ui = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
     Editor.setValue state.text Nothing editor
     pure unit
 
-  eval :: Natural Query MainDSL
+  eval :: Query ~> MainDSL
   eval (UpdateText next) =
     pure next
 

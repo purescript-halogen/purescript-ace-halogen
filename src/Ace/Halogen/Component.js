@@ -1,13 +1,13 @@
-// module Ace.Halogen.Component
+"use strict";
 
-exports.completeFns = {value: {}};
+exports.completeFns = { value: {} };
 
-exports.initialized = {value: false};
+exports.initialized = { value: false };
 
-exports.focused = {value: ""};
+exports.focused = { value: "" };
 
-exports.dataset = function(node) {
-    return function() {
-        return node.dataset;
-    };
+exports.dataset = function (node) {
+  return function () {
+    return node.dataset;
+  };
 };
