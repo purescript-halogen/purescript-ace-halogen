@@ -2,16 +2,15 @@
   "private": true,
   "scripts": {
     "clean": "rimraf output && rimraf .pulp-cache",
-    "build": "pulp build --censor-lib --strict",
-    "example": "bower link && cd example && bower link purescript-ace-halogen && npm run build"
-  },
-  "dependencies": {
-    "virtual-dom": "^2.1.1"
+    "build": "jshint src && jscs src && pulp build --censor-lib --strict",
+    "example": "bower link && cd example && bower link purescript-ace-halogen && npm i --production && npm run -s build"
   },
   "devDependencies": {
-    "pulp": "^8.2.0",
-    "purescript-psa": "^0.3.8",
-    "purescript": "^0.8.5",
-    "rimraf": "^2.5.2"
+    "jscs": "^2.8.0",
+    "jshint": "^2.9.1",
+    "pulp": "^9.0.1",
+    "purescript": "^0.9.1",
+    "purescript-psa": "^0.3.9",
+    "rimraf": "^2.5.0"
   }
 }

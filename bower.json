@@ -5,7 +5,7 @@
     "Gary Burgess <gary.burgess@gmail.com>",
     "Maxim Zimaliev <zimaliev@gmail.com>"
   ],
-  "description": "A Halogen component for the Ace editor",
+  "description": "Halogen component for the Ace editor",
   "keywords": [
     "purescript",
     "halogen",
@@ -18,15 +18,19 @@
   "license": "Apache-2.0",
   "ignore": [
     "**/.*",
-    "node_modules",
     "bower_components",
-    "test"
+    "node_modules",
+    "example",
+    "output",
+    "test",
+    "bower.json",
+    "package.json"
   ],
   "dependencies": {
-    "purescript-ace": "^0.11.0",
-    "purescript-datetime": "^0.9.1",
-    "purescript-halogen": "^0.8.0",
-    "purescript-random": "^0.2.3",
-    "purescript-refs": "^0.2.0"
+    "purescript-ace": "^1.0.0",
+    "purescript-halogen": "^0.9.0",
+    "purescript-now": "^1.0.0",
+    "purescript-random": "^1.0.0",
+    "purescript-refs": "^1.0.0"
   }
 }

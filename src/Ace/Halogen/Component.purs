@@ -11,21 +11,32 @@ module Ace.Halogen.Component
 
 import Prelude
 
-import Control.Monad (when)
+import Control.Coroutine (Producer)
+import Control.Coroutine.Aff as CCA
+import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.AVar (AVAR)
+import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Now (NOW, now)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
+import Control.Monad.Free.Trans (hoistFreeT)
 
-import Data.Date (nowEpochMilliseconds, Now)
+import Data.DateTime.Instant (unInstant)
+import Data.Either (Either(..))
 import Data.Foldable (traverse_)
-import Data.Functor (($>))
 import Data.Maybe (Maybe(..), maybe)
-import Data.NaturalTransformation (Natural)
 import Data.StrMap (StrMap)
 import Data.StrMap as Sm
-import Data.Time (Milliseconds(..))
+import Data.Time.Duration (unMilliseconds)
+
+import Ace as Ace
+import Ace.Editor as Editor
+import Ace.EditSession as Session
+import Ace.Ext.LanguageTools as LanguageTools
+import Ace.Ext.LanguageTools.Completer as Completer
+import Ace.Types (Editor, Completion, Position, EditSession, ACE)
 
 import DOM (DOM)
 import DOM.HTML.Types (HTMLElement)
@@ -33,12 +44,7 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-
-import Ace.Editor as Editor
-import Ace.EditSession as Session
-import Ace.Ext.LanguageTools as LanguageTools
-import Ace.Ext.LanguageTools.Completer as Completer
-import Ace.Types (Editor, Completion, Position, EditSession, ACE)
+import Halogen.Query.EventSource as HES
 
 -- | Effectful knot of autocomplete functions. It's needed because
 -- | `languageTools.addCompleter` is global and adds completer to
@@ -57,7 +63,6 @@ foreign import dataset
   :: forall eff
    . HTMLElement
   -> Eff (dom :: DOM | eff) (StrMap String)
-
 
 -- | Take completion function for currently selected component
 completeFnFocused :: forall eff. Eff (AceEffects eff) (CompleteFn eff)
@@ -94,22 +99,23 @@ enableAutocomplete = do
   where
   globalCompleteFn editor session position prefix cb = do
     fn <- completeFnFocused
-    runAff (const $ cb Nothing) (cb <<< Just)
-      $ fn editor session position prefix
+    void $
+      runAff (const $ cb Nothing) (cb <<< Just) $
+        fn editor session position prefix
 
 -- | Generate unique key for component
-genKey :: forall eff. Eff (now :: Now, random :: RANDOM | eff) String
+genKey :: forall eff. Eff (now :: NOW, random :: RANDOM | eff) String
 genKey = do
   rn1 <- random
   rn2 <- random
-  (Milliseconds time) <- nowEpochMilliseconds
-  pure $ show rn1 <> show time <> show rn2
+  instant <- now
+  pure $ show rn1 <> show (unMilliseconds (unInstant instant)) <> show rn2
 
 data Autocomplete = Live | Basic
 
 type AceEffects eff =
   ( random :: RANDOM
-  , now :: Now
+  , now :: NOW
   , ref :: REF
   , ace :: ACE
   , avar :: AVAR
@@ -171,24 +177,32 @@ initialAceState =
 
 -- | The Ace component.
 aceComponent
-  :: forall eff
-   . (Editor -> Aff (AceEffects eff) Unit)
+  :: forall eff g
+   . (Monad g, Affable (AceEffects eff) g)
+  => (Editor -> g Unit)
   -> Maybe Autocomplete
-  -> H.Component AceState AceQuery (Aff (AceEffects eff))
+  -> H.Component AceState AceQuery g
 aceComponent setup resume = H.lifecycleComponent
     { render
-    , eval
+    , eval: eval setup resume
     , initializer: Just (H.action Init)
     , finalizer: Just (H.action Quit)
     }
-  where
-  render :: AceState -> H.ComponentHTML AceQuery
-  render = const $ HH.div [ HP.ref (\el -> H.action (SetElement el)) ] []
 
-  eval :: Natural AceQuery (H.ComponentDSL AceState AceQuery (Aff (AceEffects eff)))
-  eval (SetElement el next) =
+render :: AceState -> H.ComponentHTML AceQuery
+render = const $ HH.div [ HP.ref (H.action <<< SetElement) ] []
+
+eval :: forall eff g
+ . (Monad g, Affable (AceEffects eff) g)
+ => (Editor -> g Unit)
+ -> Maybe Autocomplete
+ -> AceQuery
+ ~> H.ComponentDSL AceState AceQuery g
+eval setup resume = case _ of
+  SetElement el next ->
     H.modify (_ { element = el }) $> next
-  eval (Init next) = do
+
+  Init next -> do
     el <- H.gets _.element
     case el of
       Nothing -> pure unit
@@ -201,26 +215,26 @@ aceComponent setup resume = H.lifecycleComponent
           setAutocompleteResume resume editor
           Editor.onFocus editor $ writeRef focused key
         session <- H.fromEff $ Editor.getSession editor
-        H.subscribe $ H.eventSource_ (Session.onChange session) do
+        H.subscribe $ eventSource_ (Session.onChange session) do
           pure $ H.action TextChanged
         H.liftH $ setup editor
     pure next
 
-  eval (Quit next) = do
+  Quit next -> do
     H.gets _.key
       >>= traverse_ \key ->
       H.fromEff $ modifyRef completeFns $ Sm.delete key
     pure next
 
-  eval (GetEditor k) =
+  GetEditor k ->
     map k $ H.gets _.editor
 
-  eval (GetText k) =
+  GetText k ->
     H.gets _.editor
       >>= maybe (pure "") (H.fromEff <<< Editor.getValue)
       >>= k >>> pure
 
-  eval (SetText text next) = do
+  SetText text next -> do
     H.gets _.editor
       >>= traverse_ \editor -> do
         current <- H.fromEff $ Editor.getValue editor
@@ -228,18 +242,38 @@ aceComponent setup resume = H.lifecycleComponent
           $ H.fromEff (Editor.setValue text Nothing editor)
     pure next
 
-  eval (SetAutocomplete mbAc next) = do
+  SetAutocomplete mbAc next -> do
     H.gets _.editor
       >>= traverse_ (H.fromEff <<< setAutocompleteResume mbAc)
     pure next
 
-  eval (SetCompleteFn fn next) = do
+  SetCompleteFn fn next -> do
     H.gets _.key
       >>= traverse_ \key ->
       H.fromEff $ modifyRef completeFns $ Sm.insert key fn
     pure next
 
-  eval (TextChanged next) = pure next
+  TextChanged next -> pure next
+
+-- TODO: when Halogen's eventSource_ / produce is fixed to use Affable rather
+-- than MonadAff, these can be removed.
+eventSource_
+  :: forall eff f g
+   . (Monad g, Affable (avar :: AVAR | eff) g)
+  => (Eff (avar :: AVAR | eff) Unit -> Eff (avar :: AVAR | eff) Unit)
+  -> Eff (avar :: AVAR | eff) (f Unit)
+  -> HES.EventSource f g
+eventSource_ attach handle =
+  HES.EventSource $
+    SCR.producerToStallingProducer $ produce \emit ->
+      attach (emit <<< Left =<< handle)
+
+produce
+  :: forall a r m eff
+   . (Functor m, Affable (avar :: AVAR | eff) m)
+  => ((Either a r -> Eff (avar :: AVAR | eff) Unit) -> Eff (avar :: AVAR | eff) Unit)
+  -> Producer a m r
+produce = hoistFreeT H.fromAff <<< CCA.produce
 
 -- | A convenience function for creating a `SlotConstructor` for an Ace
 -- | component.
