@@ -11,9 +11,6 @@ module Ace.Halogen.Component
 
 import Prelude
 
-import Control.Coroutine (Producer)
-import Control.Coroutine.Aff as CCA
-import Control.Coroutine.Stalling as SCR
 import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Free (class Affable)
@@ -21,10 +18,8 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Now (NOW, now)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
-import Control.Monad.Free.Trans (hoistFreeT)
 
 import Data.DateTime.Instant (unInstant)
-import Data.Either (Either(..))
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.StrMap (StrMap)
@@ -44,7 +39,6 @@ import DOM.HTML.Types (HTMLElement)
 import Halogen as H
 import Halogen.HTML.Indexed as HH
 import Halogen.HTML.Properties.Indexed as HP
-import Halogen.Query.EventSource as HES
 
 -- | Effectful knot of autocomplete functions. It's needed because
 -- | `languageTools.addCompleter` is global and adds completer to
@@ -215,7 +209,7 @@ eval setup resume = case _ of
           setAutocompleteResume resume editor
           Editor.onFocus editor $ writeRef focused key
         session <- H.fromEff $ Editor.getSession editor
-        H.subscribe $ eventSource_ (Session.onChange session) do
+        H.subscribe $ H.eventSource_ (Session.onChange session) do
           pure $ H.action TextChanged
         H.liftH $ setup editor
     pure next
@@ -254,26 +248,6 @@ eval setup resume = case _ of
     pure next
 
   TextChanged next -> pure next
-
--- TODO: when Halogen's eventSource_ / produce is fixed to use Affable rather
--- than MonadAff, these can be removed.
-eventSource_
-  :: forall eff f g
-   . (Monad g, Affable (avar :: AVAR | eff) g)
-  => (Eff (avar :: AVAR | eff) Unit -> Eff (avar :: AVAR | eff) Unit)
-  -> Eff (avar :: AVAR | eff) (f Unit)
-  -> HES.EventSource f g
-eventSource_ attach handle =
-  HES.EventSource $
-    SCR.producerToStallingProducer $ produce \emit ->
-      attach (emit <<< Left =<< handle)
-
-produce
-  :: forall a r m eff
-   . (Functor m, Affable (avar :: AVAR | eff) m)
-  => ((Either a r -> Eff (avar :: AVAR | eff) Unit) -> Eff (avar :: AVAR | eff) Unit)
-  -> Producer a m r
-produce = hoistFreeT H.fromAff <<< CCA.produce
 
 -- | A convenience function for creating a `SlotConstructor` for an Ace
 -- | component.
