@@ -20,7 +20,7 @@ import Control.Monad.Eff.Random (random, RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
 
 import Data.DateTime.Instant (unInstant)
-import Data.Foldable (traverse_)
+import Data.Foldable (traverse_, for_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.StrMap (StrMap)
 import Data.StrMap as Sm
@@ -43,34 +43,34 @@ import Halogen.HTML.Properties.Indexed as HP
 -- | Effectful knot of autocomplete functions. It's needed because
 -- | `languageTools.addCompleter` is global and adds completer to
 -- | all editors
-foreign import completeFns :: forall eff. Ref (StrMap (CompleteFn eff))
+foreign import completeFns ∷ ∀ eff. Ref (StrMap (CompleteFn eff))
 
 -- | This flag is used to determine if `languageTools` initialized
-foreign import initialized :: Ref Boolean
+foreign import initialized ∷ Ref Boolean
 
 -- | Global key of currently focused component. Used only to take
 -- | autocomplete function
-foreign import focused :: Ref String
+foreign import focused ∷ Ref String
 
 -- | Get `dataset` property of element
 foreign import dataset
-  :: forall eff
-   . HTMLElement
-  -> Eff (dom :: DOM | eff) (StrMap String)
+  ∷ ∀ eff
+  . HTMLElement
+  → Eff (dom ∷ DOM | eff) (StrMap String)
 
 -- | Take completion function for currently selected component
-completeFnFocused :: forall eff. Eff (AceEffects eff) (CompleteFn eff)
+completeFnFocused ∷ ∀ eff. Eff (AceEffects eff) (CompleteFn eff)
 completeFnFocused = do
-  focusedKey <- readRef focused
-  mFns <- readRef completeFns
+  focusedKey ← readRef focused
+  mFns ← readRef completeFns
   maybe (pure emptyCompleteFn) pure $ Sm.lookup focusedKey mFns
   where
-  emptyCompleteFn :: CompleteFn eff
+  emptyCompleteFn ∷ CompleteFn eff
   emptyCompleteFn _ _ _ _ = pure []
 
 -- | Set autocomplete resume
 setAutocompleteResume
-  :: forall eff. Maybe Autocomplete -> Editor -> Eff (AceEffects eff) Unit
+  ∷ ∀ eff. Maybe Autocomplete → Editor → Eff (AceEffects eff) Unit
 setAutocompleteResume Nothing editor = do
   Editor.setEnableBasicAutocompletion false editor
   Editor.setEnableLiveAutocompletion false editor
@@ -82,38 +82,38 @@ setAutocompleteResume (Just Live) editor = do
   Editor.setEnableBasicAutocompletion true editor
 
 -- | Language tools and autocomplete initializer. Runs once.
-enableAutocomplete :: forall eff. Eff (AceEffects eff) Unit
+enableAutocomplete ∷ ∀ eff. Eff (AceEffects eff) Unit
 enableAutocomplete = do
-  languageToolsInitialized <- readRef initialized
+  languageToolsInitialized ← readRef initialized
   when (not languageToolsInitialized) do
-    completer <- Completer.mkCompleter globalCompleteFn
-    tools <- LanguageTools.languageTools
+    completer ← Completer.mkCompleter globalCompleteFn
+    tools ← LanguageTools.languageTools
     LanguageTools.addCompleter completer tools
     writeRef initialized true
   where
   globalCompleteFn editor session position prefix cb = do
-    fn <- completeFnFocused
+    fn ← completeFnFocused
     void $
       runAff (const $ cb Nothing) (cb <<< Just) $
         fn editor session position prefix
 
 -- | Generate unique key for component
-genKey :: forall eff. Eff (now :: NOW, random :: RANDOM | eff) String
+genKey ∷ ∀ eff. Eff (now ∷ NOW, random ∷ RANDOM | eff) String
 genKey = do
-  rn1 <- random
-  rn2 <- random
-  instant <- now
+  rn1 ← random
+  rn2 ← random
+  instant ← now
   pure $ show rn1 <> show (unMilliseconds (unInstant instant)) <> show rn2
 
 data Autocomplete = Live | Basic
 
 type AceEffects eff =
-  ( random :: RANDOM
-  , now :: NOW
-  , ref :: REF
-  , ace :: ACE
-  , avar :: AVAR
-  , dom :: DOM
+  ( random ∷ RANDOM
+  , now ∷ NOW
+  , ref ∷ REF
+  , ace ∷ ACE
+  , avar ∷ AVAR
+  , dom ∷ DOM
   | eff
   )
 
@@ -136,33 +136,33 @@ data AceQuery a
   = SetElement (Maybe HTMLElement) a
   | Init a
   | Quit a
-  | GetText (String -> a)
+  | GetText (String → a)
   | SetText String a
   | SetAutocomplete (Maybe Autocomplete) a
-  | SetCompleteFn (forall eff. CompleteFn eff) a
-  | GetEditor (Maybe Editor -> a)
+  | SetCompleteFn (∀ eff. CompleteFn eff) a
+  | GetEditor (Maybe Editor → a)
   | TextChanged a
 
 -- | The type for autocomplete function s. Takes editor, session, text position,
 -- | prefix, and returns array of possible completions in the `Aff` monad.
 type CompleteFn eff
    = Editor
-  -> EditSession
-  -> Position
-  -> String
-  -> Aff (AceEffects eff) (Array Completion)
+  → EditSession
+  → Position
+  → String
+  → Aff (AceEffects eff) (Array Completion)
 
 -- | Ace component state.
 -- | - `key` - unique key of this instance
 -- | - `editor` - Ace editor instance wrapped by this component
 type AceState =
-  { key :: Maybe String
-  , editor :: Maybe Editor
-  , element :: Maybe HTMLElement
+  { key ∷ Maybe String
+  , editor ∷ Maybe Editor
+  , element ∷ Maybe HTMLElement
   }
 
 -- | An initial empty state value.
-initialAceState :: AceState
+initialAceState ∷ AceState
 initialAceState =
   { key: Nothing
   , editor: Nothing
@@ -171,11 +171,11 @@ initialAceState =
 
 -- | The Ace component.
 aceComponent
-  :: forall eff g
+  ∷ ∀ eff g
    . (Monad g, Affable (AceEffects eff) g)
-  => (Editor -> g Unit)
-  -> Maybe Autocomplete
-  -> H.Component AceState AceQuery g
+  ⇒ (Editor → g Unit)
+  → Maybe Autocomplete
+  → H.Component AceState AceQuery g
 aceComponent setup resume = H.lifecycleComponent
     { render
     , eval: eval setup resume
@@ -183,82 +183,83 @@ aceComponent setup resume = H.lifecycleComponent
     , finalizer: Just (H.action Quit)
     }
 
-render :: AceState -> H.ComponentHTML AceQuery
+render ∷ AceState → H.ComponentHTML AceQuery
 render = const $ HH.div [ HP.ref (H.action <<< SetElement) ] []
 
-eval :: forall eff g
+eval ∷ ∀ eff g
  . (Monad g, Affable (AceEffects eff) g)
- => (Editor -> g Unit)
- -> Maybe Autocomplete
- -> AceQuery
+ ⇒ (Editor → g Unit)
+ → Maybe Autocomplete
+ → AceQuery
  ~> H.ComponentDSL AceState AceQuery g
 eval setup resume = case _ of
-  SetElement el next ->
-    H.modify (_ { element = el }) $> next
-
-  Init next -> do
-    el <- H.gets _.element
-    case el of
-      Nothing -> pure unit
-      Just el' -> do
-        key <- H.gets _.key >>= maybe (H.fromEff genKey) pure
-        editor <- H.fromEff $ Ace.editNode el' Ace.ace
-        H.set { key: Just key, editor: Just editor, element: Just el' }
-        H.fromEff do
-          enableAutocomplete
-          setAutocompleteResume resume editor
-          Editor.onFocus editor $ writeRef focused key
-        session <- H.fromEff $ Editor.getSession editor
-        H.subscribe $ H.eventSource_ (Session.onChange session) do
-          pure $ H.action TextChanged
-        H.liftH $ setup editor
+  SetElement el next → do
+    state ← H.get
+    for_ state.editor $ H.fromEff <<< Editor.destroy
+    H.modify _{ element = el, editor = Nothing }
     pure next
 
-  Quit next -> do
+  Init next → do
+    el ← H.gets _.element
+    for_ el \el' → do
+      key ← H.gets _.key >>= maybe (H.fromEff genKey) pure
+      editor ← H.fromEff $ Ace.editNode el' Ace.ace
+      H.set { key: Just key, editor: Just editor, element: Just el' }
+      H.fromEff do
+        enableAutocomplete
+        setAutocompleteResume resume editor
+        Editor.onFocus editor $ writeRef focused key
+      session ← H.fromEff $ Editor.getSession editor
+      H.subscribe $ H.eventSource_ (Session.onChange session) do
+        pure $ H.action TextChanged
+      H.liftH $ setup editor
+    pure next
+
+  Quit next → do
     H.gets _.key
-      >>= traverse_ \key ->
+      >>= traverse_ \key →
       H.fromEff $ modifyRef completeFns $ Sm.delete key
     pure next
 
-  GetEditor k ->
+  GetEditor k →
     map k $ H.gets _.editor
 
-  GetText k ->
+  GetText k →
     H.gets _.editor
       >>= maybe (pure "") (H.fromEff <<< Editor.getValue)
       >>= k >>> pure
 
-  SetText text next -> do
+  SetText text next → do
     H.gets _.editor
-      >>= traverse_ \editor -> do
-        current <- H.fromEff $ Editor.getValue editor
+      >>= traverse_ \editor → do
+        current ← H.fromEff $ Editor.getValue editor
         when (text /= current) $ void
           $ H.fromEff (Editor.setValue text Nothing editor)
     pure next
 
-  SetAutocomplete mbAc next -> do
+  SetAutocomplete mbAc next → do
     H.gets _.editor
       >>= traverse_ (H.fromEff <<< setAutocompleteResume mbAc)
     pure next
 
-  SetCompleteFn fn next -> do
+  SetCompleteFn fn next → do
     H.gets _.key
-      >>= traverse_ \key ->
+      >>= traverse_ \key →
       H.fromEff $ modifyRef completeFns $ Sm.insert key fn
     pure next
 
-  TextChanged next -> pure next
+  TextChanged next → pure next
 
 -- | A convenience function for creating a `SlotConstructor` for an Ace
 -- | component.
 aceConstructor
-  :: forall p eff
-   . p
-  -> (Editor -> Aff (AceEffects eff) Unit)
-  -> Maybe Autocomplete
-  -> H.SlotConstructor AceState AceQuery (Aff (AceEffects eff)) p
+  ∷ ∀ p eff
+  . p
+  → (Editor → Aff (AceEffects eff) Unit)
+  → Maybe Autocomplete
+  → H.SlotConstructor AceState AceQuery (Aff (AceEffects eff)) p
 aceConstructor p setup mbAc =
-  H.SlotConstructor p \_ ->
+  H.SlotConstructor p \_ →
     { component: aceComponent setup mbAc
     , initialState: initialAceState
     }
