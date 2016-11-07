@@ -22,9 +22,9 @@ import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
 import Data.DateTime.Instant (unInstant)
 import Data.Foldable (traverse_, for_)
 import Data.Maybe (Maybe(..), maybe)
+import Data.Newtype (unwrap)
 import Data.StrMap (StrMap)
 import Data.StrMap as Sm
-import Data.Time.Duration (unMilliseconds)
 
 import Ace as Ace
 import Ace.Editor as Editor
@@ -103,7 +103,7 @@ genKey = do
   rn1 ← random
   rn2 ← random
   instant ← now
-  pure $ show rn1 <> show (unMilliseconds (unInstant instant)) <> show rn2
+  pure $ show rn1 <> show (unwrap (unInstant instant)) <> show rn2
 
 data Autocomplete = Live | Basic
 
@@ -146,7 +146,7 @@ data AceQuery a
 -- | The type for autocomplete function s. Takes editor, session, text position,
 -- | prefix, and returns array of possible completions in the `Aff` monad.
 type CompleteFn eff
-   = Editor
+  = Editor
   → EditSession
   → Position
   → String
@@ -172,7 +172,7 @@ initialAceState =
 -- | The Ace component.
 aceComponent
   ∷ ∀ eff g
-   . (Monad g, Affable (AceEffects eff) g)
+  . (Monad g, Affable (AceEffects eff) g)
   ⇒ (Editor → g Unit)
   → Maybe Autocomplete
   → H.Component AceState AceQuery g

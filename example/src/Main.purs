@@ -25,10 +25,10 @@ data Query a
   = UpdateText a
 
 type State =
-  { text :: String
+  { text ∷ String
   }
 
-initialState :: State
+initialState ∷ State
 initialState =
   { text : "Name: Ace Editor"
   }
@@ -38,38 +38,38 @@ type AceSlot = Unit
 type StateP g = H.ParentState State AceState Query AceQuery g AceSlot
 type QueryP = Coproduct Query (H.ChildF AceSlot AceQuery)
 type MainHtml g = H.ParentHTML AceState Query AceQuery g AceSlot
-type MainEffects = H.HalogenEffects (random :: RANDOM, now :: NOW, ref :: REF, ace :: ACE)
+type MainEffects = H.HalogenEffects (random ∷ RANDOM, now ∷ NOW, ref ∷ REF, ace ∷ ACE)
 type MainAff = Aff MainEffects
 type MainDSL = H.ParentDSL State AceState Query AceQuery MainAff AceSlot
 
-ui :: H.Component (StateP MainAff) QueryP MainAff
+ui ∷ H.Component (StateP MainAff) QueryP MainAff
 ui = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
   where
 
-  render :: State -> MainHtml MainAff
+  render ∷ State → MainHtml MainAff
   render state =
     HH.div_
       [ HH.Slot $ aceConstructor unit (initEditor state) Nothing
       , HH.div_ [ HH.text state.text ]
       ]
 
-  initEditor :: State -> Editor -> MainAff Unit
+  initEditor ∷ State → Editor → MainAff Unit
   initEditor state editor = liftEff $ do
-    session <- Editor.getSession editor
+    session ← Editor.getSession editor
     Session.setMode "ace/mode/yaml" session
     Editor.setValue state.text Nothing editor
     pure unit
 
-  eval :: Query ~> MainDSL
+  eval ∷ Query ~> MainDSL
   eval (UpdateText next) =
     pure next
 
-  peek :: forall x. AceQuery x -> MainDSL Unit
+  peek ∷ forall x. AceQuery x → MainDSL Unit
   peek (TextChanged _) = do
-    text <- H.query unit $ H.request GetText
+    text ← H.query unit $ H.request GetText
     H.modify (_ { text = fromMaybe "" text })
   peek _ =
     pure unit
 
-main :: Eff MainEffects Unit
+main ∷ Eff MainEffects Unit
 main = runHalogenAff $ H.runUI ui (H.parentState initialState) =<< awaitBody
