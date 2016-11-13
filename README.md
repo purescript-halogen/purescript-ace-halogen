@@ -1,8 +1,7 @@
 # purescript-ace-halogen
 
-[![Latest release](http://img.shields.io/bower/v/purescript-ace-halogen.svg)](https://github.com/slamdata/purescript-ace-halogen/releases)
-[![Build Status](https://travis-ci.org/slamdata/purescript-ace-halogen.svg?branch=master)](https://travis-ci.org/slamdata/purescript-ace-halogen)
-[![Dependency Status](https://www.versioneye.com/user/projects/563a1eda1d47d4001500088b/badge.svg?style=flat)](https://www.versioneye.com/user/projects/563a1eda1d47d4001500088b)
+[![Latest release](http://img.shields.io/github/release/slamdata/purescript-ace-halogen.svg)](https://github.com/slamdata/purescript-ace-halogen/releases)
+[![Build status](https://travis-ci.org/slamdata/purescript-ace-halogen.svg?branch=master)](https://travis-ci.org/slamdata/purescript-ace-halogen)
 
 [Halogen](https://github.com/slamdata/purescript-halogen) component for the [Ace editor](https://ace.c9.io).
 
