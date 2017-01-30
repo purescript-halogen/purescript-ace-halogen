@@ -6,23 +6,23 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (RANDOM)
-import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Eff.Now (NOW)
 
-import Data.Functor.Coproduct (Coproduct)
 import Data.Maybe (Maybe (..), fromMaybe)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.Util (runHalogenAff, awaitBody)
+import Halogen.Aff as HA
+import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
+import Halogen.VDom.Driver (runUI)
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceState, AceQuery (TextChanged, GetText), aceConstructor)
+import Ace.Halogen.Component (AceQuery(..), AceMessage(..), aceComponent)
 import Ace.Types (ACE, Editor)
 
 data Query a
-  = UpdateText a
+  = HandleMessage AceMessage a
 
 type State =
   { text ∷ String
@@ -35,23 +35,31 @@ initialState =
 
 type AceSlot = Unit
 
-type StateP g = H.ParentState State AceState Query AceQuery g AceSlot
-type QueryP = Coproduct Query (H.ChildF AceSlot AceQuery)
-type MainHtml g = H.ParentHTML AceState Query AceQuery g AceSlot
-type MainEffects = H.HalogenEffects (random ∷ RANDOM, now ∷ NOW, ref ∷ REF, ace ∷ ACE)
+type MainEffects = HA.HalogenEffects (random ∷ RANDOM, now ∷ NOW, ace ∷ ACE)
 type MainAff = Aff MainEffects
-type MainDSL = H.ParentDSL State AceState Query AceQuery MainAff AceSlot
 
-ui ∷ H.Component (StateP MainAff) QueryP MainAff
-ui = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
+type MainHtml = H.ParentHTML Query AceQuery AceSlot MainAff
+type MainDSL = H.ParentDSL State Query AceQuery AceSlot Void MainAff
+
+ui ∷ H.Component HH.HTML Query Unit Void MainAff
+ui =
+  H.parentComponent
+    { initialState: const initialState
+    , render
+    , eval
+    , receiver: const Nothing
+    }
   where
 
-  render ∷ State → MainHtml MainAff
+  render ∷ State → MainHtml
   render state =
     HH.div_
-      [ HH.Slot $ aceConstructor unit (initEditor state) Nothing
+      [ HH.slot unit (component state) unit (HE.input HandleMessage)
       , HH.div_ [ HH.text state.text ]
       ]
+
+  component :: State → H.Component HH.HTML AceQuery Unit AceMessage MainAff
+  component state = aceComponent (initEditor state) Nothing
 
   initEditor ∷ State → Editor → MainAff Unit
   initEditor state editor = liftEff $ do
@@ -61,15 +69,11 @@ ui = H.parentComponent { render, eval, peek: Just (peek <<< H.runChildF) }
     pure unit
 
   eval ∷ Query ~> MainDSL
-  eval (UpdateText next) =
-    pure next
-
-  peek ∷ forall x. AceQuery x → MainDSL Unit
-  peek (TextChanged _) = do
-    text ← H.query unit $ H.request GetText
-    H.modify (_ { text = fromMaybe "" text })
-  peek _ =
-    pure unit
+  eval = case _ of
+    HandleMessage AceValueChanged next → do
+      text ← H.query unit $ H.request GetText
+      H.modify (_ { text = fromMaybe "" text })
+      pure next
 
 main ∷ Eff MainEffects Unit
-main = runHalogenAff $ H.runUI ui (H.parentState initialState) =<< awaitBody
+main = HA.runHalogenAff (runUI ui unit =<< HA.awaitBody)
