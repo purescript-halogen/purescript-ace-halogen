@@ -8,7 +8,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Now (NOW)
 
-import Data.Maybe (Maybe (..), fromMaybe)
+import Data.Maybe (Maybe(..))
 
 import Halogen as H
 import Halogen.Aff as HA
@@ -18,7 +18,7 @@ import Halogen.VDom.Driver (runUI)
 
 import Ace.Editor as Editor
 import Ace.EditSession as Session
-import Ace.Halogen.Component (AceQuery(..), AceMessage(..), aceComponent)
+import Ace.Halogen.Component (AceQuery, AceMessage(..), aceComponent)
 import Ace.Types (ACE, Editor)
 
 data Query a
@@ -70,9 +70,8 @@ ui =
 
   eval ∷ Query ~> MainDSL
   eval = case _ of
-    HandleMessage AceValueChanged next → do
-      text ← H.query unit $ H.request GetText
-      H.modify (_ { text = fromMaybe "" text })
+    HandleMessage (TextChanged text) next → do
+      H.modify (_ { text = text })
       pure next
 
 main ∷ Eff MainEffects Unit
