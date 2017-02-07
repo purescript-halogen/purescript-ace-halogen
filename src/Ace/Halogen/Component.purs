@@ -1,9 +1,7 @@
 module Ace.Halogen.Component
   ( aceComponent
-  , aceConstructor
   , AceQuery(..)
-  , AceState(..)
-  , initialAceState
+  , AceMessage(..)
   , AceEffects
   , Autocomplete(..)
   , CompleteFn
@@ -13,14 +11,14 @@ import Prelude
 
 import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Free (class Affable)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Eff.Now (NOW, now)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
 
 import Data.DateTime.Instant (unInstant)
-import Data.Foldable (traverse_, for_)
+import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.StrMap (StrMap)
@@ -37,8 +35,8 @@ import DOM (DOM)
 import DOM.HTML.Types (HTMLElement)
 
 import Halogen as H
-import Halogen.HTML.Indexed as HH
-import Halogen.HTML.Properties.Indexed as HP
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 -- | Effectful knot of autocomplete functions. It's needed because
 -- | `languageTools.addCompleter` is global and adds completer to
@@ -129,19 +127,19 @@ type AceEffects eff =
 -- |   - `Just Live` - enables live autocomplete
 -- | - `SetCompleteFn` - sets function providing autocomplete variants.
 -- | - `GetEditor` - returns ace editor instance handled by this component.
--- | - `TextChanged` - raised internally when the value in the editor is
--- |   changed. Allows for parent component to observe when the value changes
--- |   via the `peek` mechanism.
 data AceQuery a
-  = SetElement (Maybe HTMLElement) a
-  | Init a
+  = Init a
   | Quit a
   | GetText (String → a)
   | SetText String a
   | SetAutocomplete (Maybe Autocomplete) a
   | SetCompleteFn (∀ eff. CompleteFn eff) a
   | GetEditor (Maybe Editor → a)
-  | TextChanged a
+  | HandleChange (H.SubscribeStatus -> a)
+
+-- | Ace output messages
+-- | - `AceValueChanged` - raised when the value in the editor is changed.
+data AceMessage = TextChanged String
 
 -- | The type for autocomplete function s. Takes editor, session, text position,
 -- | prefix, and returns array of possible completions in the `Aff` monad.
@@ -158,108 +156,96 @@ type CompleteFn eff
 type AceState =
   { key ∷ Maybe String
   , editor ∷ Maybe Editor
-  , element ∷ Maybe HTMLElement
   }
 
+type DSL m = H.ComponentDSL AceState AceQuery AceMessage m
+
 -- | An initial empty state value.
-initialAceState ∷ AceState
-initialAceState =
+initialState ∷ AceState
+initialState =
   { key: Nothing
   , editor: Nothing
-  , element: Nothing
   }
 
 -- | The Ace component.
 aceComponent
-  ∷ ∀ eff g
-  . (Monad g, Affable (AceEffects eff) g)
-  ⇒ (Editor → g Unit)
+  ∷ ∀ eff m
+  . MonadAff (AceEffects eff) m
+  ⇒ (Editor → m Unit)
   → Maybe Autocomplete
-  → H.Component AceState AceQuery g
-aceComponent setup resume = H.lifecycleComponent
-    { render
+  → H.Component HH.HTML AceQuery Unit AceMessage m
+aceComponent setup resume =
+  H.lifecycleComponent
+    { initialState: const initialState
+    , render
     , eval: eval setup resume
     , initializer: Just (H.action Init)
     , finalizer: Just (H.action Quit)
+    , receiver: const Nothing
     }
 
 render ∷ AceState → H.ComponentHTML AceQuery
-render = const $ HH.div [ HP.ref (H.action <<< SetElement) ] []
+render = const $ HH.div [ HP.ref (H.RefLabel "container") ] []
 
-eval ∷ ∀ eff g
- . (Monad g, Affable (AceEffects eff) g)
- ⇒ (Editor → g Unit)
+eval ∷ ∀ eff m
+ . MonadAff (AceEffects eff) m
+ ⇒ (Editor → m Unit)
  → Maybe Autocomplete
  → AceQuery
- ~> H.ComponentDSL AceState AceQuery g
+ ~> DSL m
 eval setup resume = case _ of
-  SetElement el next → do
-    state ← H.get
-    for_ state.editor $ H.fromEff <<< Editor.destroy
-    H.modify _{ element = el, editor = Nothing }
-    pure next
 
   Init next → do
-    el ← H.gets _.element
-    for_ el \el' → do
-      key ← H.gets _.key >>= maybe (H.fromEff genKey) pure
-      editor ← H.fromEff $ Ace.editNode el' Ace.ace
-      H.set { key: Just key, editor: Just editor, element: Just el' }
-      H.fromEff do
+    H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el → do
+      key ← H.gets _.key >>= maybe (H.liftEff genKey) pure
+      editor ← H.liftEff $ Ace.editNode el Ace.ace
+      H.put { key: Just key, editor: Just editor }
+      H.liftEff do
         enableAutocomplete
         setAutocompleteResume resume editor
         Editor.onFocus editor $ writeRef focused key
-      session ← H.fromEff $ Editor.getSession editor
-      H.subscribe $ H.eventSource_ (Session.onChange session) do
-        pure $ H.action TextChanged
-      H.liftH $ setup editor
+      session ← H.liftEff $ Editor.getSession editor
+      H.subscribe $ H.eventSource_ (Session.onChange session) (H.request HandleChange)
+      H.lift $ setup editor
     pure next
 
   Quit next → do
     H.gets _.key
       >>= traverse_ \key →
-      H.fromEff $ modifyRef completeFns $ Sm.delete key
+      H.liftEff $ modifyRef completeFns $ Sm.delete key
     pure next
 
   GetEditor k →
     map k $ H.gets _.editor
 
   GetText k →
-    H.gets _.editor
-      >>= maybe (pure "") (H.fromEff <<< Editor.getValue)
-      >>= k >>> pure
+    pure <<< k =<< getText
 
   SetText text next → do
     H.gets _.editor
       >>= traverse_ \editor → do
-        current ← H.fromEff $ Editor.getValue editor
+        current ← H.liftEff $ Editor.getValue editor
         when (text /= current) $ void
-          $ H.fromEff (Editor.setValue text Nothing editor)
+          $ H.liftEff (Editor.setValue text Nothing editor)
     pure next
 
   SetAutocomplete mbAc next → do
     H.gets _.editor
-      >>= traverse_ (H.fromEff <<< setAutocompleteResume mbAc)
+      >>= traverse_ (H.liftEff <<< setAutocompleteResume mbAc)
     pure next
 
   SetCompleteFn fn next → do
     H.gets _.key
       >>= traverse_ \key →
-      H.fromEff $ modifyRef completeFns $ Sm.insert key fn
+      H.liftEff $ modifyRef completeFns $ Sm.insert key fn
     pure next
 
-  TextChanged next → pure next
+  HandleChange k → do
+    H.raise <<< TextChanged =<< getText
+    pure $ k H.Listening
 
--- | A convenience function for creating a `SlotConstructor` for an Ace
--- | component.
-aceConstructor
-  ∷ ∀ p eff
-  . p
-  → (Editor → Aff (AceEffects eff) Unit)
-  → Maybe Autocomplete
-  → H.SlotConstructor AceState AceQuery (Aff (AceEffects eff)) p
-aceConstructor p setup mbAc =
-  H.SlotConstructor p \_ →
-    { component: aceComponent setup mbAc
-    , initialState: initialAceState
-    }
+  where
+
+  getText :: DSL m String
+  getText =
+    maybe (pure "") (H.liftEff <<< Editor.getValue) =<< H.gets _.editor
