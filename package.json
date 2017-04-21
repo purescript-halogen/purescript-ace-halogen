@@ -2,15 +2,14 @@
   "private": true,
   "scripts": {
     "clean": "rimraf output && rimraf .pulp-cache",
-    "build": "jshint src && jscs src && pulp build -- --censor-lib --strict",
-    "example": "bower link && cd example && bower link purescript-ace-halogen && npm i --production && npm run -s build"
+    "build": "eslint src && pulp build -- --censor-lib --strict",
+    "example": "bower link && cd example && bower link purescript-ace-halogen && npm run -s build"
   },
   "devDependencies": {
-    "jscs": "^3.0.7",
-    "jshint": "^2.9.4",
-    "pulp": "^10.0.0",
-    "purescript": "^0.10.5",
-    "purescript-psa": "^0.4.0",
-    "rimraf": "^2.5.4"
+    "eslint": "^3.19.0",
+    "pulp": "^11.0.0",
+    "purescript": "^0.11.4",
+    "purescript-psa": "^0.5.1",
+    "rimraf": "^2.6.1"
   }
 }

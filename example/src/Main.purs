@@ -65,7 +65,7 @@ ui =
   initEditor state editor = liftEff $ do
     session ← Editor.getSession editor
     Session.setMode "ace/mode/yaml" session
-    Editor.setValue state.text Nothing editor
+    _ ← Editor.setValue state.text Nothing editor
     pure unit
 
   eval ∷ Query ~> MainDSL
