@@ -27,10 +27,10 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-ace": "^3.0.0",
-    "purescript-halogen": "^1.0.0",
-    "purescript-now": "^2.0.0",
-    "purescript-random": "^2.0.0",
-    "purescript-refs": "^2.0.0"
+    "purescript-ace": "^4.0.0",
+    "purescript-halogen": "^2.0.0",
+    "purescript-now": "^3.0.0",
+    "purescript-random": "^3.0.0",
+    "purescript-refs": "^3.0.0"
   }
 }
