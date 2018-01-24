@@ -6,10 +6,10 @@
     "example": "bower link && cd example && bower link purescript-ace-halogen && npm run -s build"
   },
   "devDependencies": {
-    "eslint": "^3.19.0",
-    "pulp": "^11.0.0",
-    "purescript": "^0.11.4",
-    "purescript-psa": "^0.5.1",
-    "rimraf": "^2.6.1"
+    "eslint": "^4.16.0",
+    "pulp": "^12.0.1",
+    "purescript": "^0.11.7",
+    "purescript-psa": "^0.6.0",
+    "rimraf": "^2.6.2"
   }
 }
