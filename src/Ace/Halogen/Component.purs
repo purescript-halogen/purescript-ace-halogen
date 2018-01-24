@@ -9,31 +9,28 @@ module Ace.Halogen.Component
 
 import Prelude
 
+import Ace as Ace
+import Ace.EditSession as Session
+import Ace.Editor as Editor
+import Ace.Ext.LanguageTools as LanguageTools
+import Ace.Ext.LanguageTools.Completer as Completer
+import Ace.Types (Editor, Completion, Position, EditSession, ACE)
 import Control.Monad.Aff (Aff, runAff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
 import Control.Monad.Aff.Class (class MonadAff)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Now (NOW, now)
 import Control.Monad.Eff.Random (random, RANDOM)
 import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
-
+import DOM (DOM)
+import DOM.HTML.Types (HTMLElement)
 import Data.DateTime.Instant (unInstant)
+import Data.Either (either)
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.StrMap (StrMap)
 import Data.StrMap as Sm
-
-import Ace as Ace
-import Ace.Editor as Editor
-import Ace.EditSession as Session
-import Ace.Ext.LanguageTools as LanguageTools
-import Ace.Ext.LanguageTools.Completer as Completer
-import Ace.Types (Editor, Completion, Position, EditSession, ACE)
-
-import DOM (DOM)
-import DOM.HTML.Types (HTMLElement)
-
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -91,9 +88,9 @@ enableAutocomplete = do
   where
   globalCompleteFn editor session position prefix cb = do
     fn ← completeFnFocused
-    void $
-      runAff (const $ cb Nothing) (cb <<< Just) $
-        fn editor session position prefix
+    void
+      $ runAff (either (const (pure unit)) (cb <<< Just))
+      $ fn editor session position prefix
 
 -- | Generate unique key for component
 genKey ∷ ∀ eff. Eff (now ∷ NOW, random ∷ RANDOM | eff) String
