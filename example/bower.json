@@ -1,8 +1,33 @@
 {
   "name": "purescript-ace-halogen-example",
   "private": true,
+  "ignore": [
+    "**/.*",
+    "bower_components",
+    "node_modules",
+    "example",
+    "output",
+    "test",
+    "bower.json",
+    "package.json"
+  ],
   "dependencies": {
     "purescript-ace-halogen": "*",
-    "ace-builds": "^1.2.2"
+    "purescript-prelude": "^4.1.1",
+    "purescript-halogen": "4.0.0",
+    "purescript-ace": "^7.0.0",
+    "purescript-aff": "^5.1.1",
+    "purescript-random": "^4.0.0",
+    "ace-builds": "^1.4.4"
+  },
+  "resolutions": {
+    "purescript-foreign-object": "^2.0.1",
+    "purescript-typelevel-prelude": "^4.0.0",
+    "purescript-web-html": "^2.0.0",
+    "purescript-web-uievents": "^2.0.0",
+    "purescript-web-file": "^2.0.0",
+    "purescript-web-dom": "^2.0.0",
+    "purescript-web-storage": "^3.0.0",
+    "purescript-web-events": "^2.0.0"
   }
 }

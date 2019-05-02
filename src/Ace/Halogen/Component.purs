@@ -2,7 +2,6 @@ module Ace.Halogen.Component
   ( aceComponent
   , AceQuery(..)
   , AceMessage(..)
-  , AceEffects
   , Autocomplete(..)
   , CompleteFn
   ) where
@@ -10,35 +9,33 @@ module Ace.Halogen.Component
 import Prelude
 
 import Ace as Ace
-import Ace.EditSession as Session
 import Ace.Editor as Editor
+import Ace.EditSession as Session
 import Ace.Ext.LanguageTools as LanguageTools
 import Ace.Ext.LanguageTools.Completer as Completer
-import Ace.Types (Editor, Completion, Position, EditSession, ACE)
-import Control.Monad.Aff (Aff, runAff)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Class (class MonadAff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Now (NOW, now)
-import Control.Monad.Eff.Random (random, RANDOM)
-import Control.Monad.Eff.Ref (Ref, REF, readRef, writeRef, modifyRef)
-import DOM (DOM)
-import DOM.HTML.Types (HTMLElement)
+import Ace.Types (Editor, Completion, Position, EditSession)
 import Data.DateTime.Instant (unInstant)
 import Data.Either (either)
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
-import Data.StrMap (StrMap)
-import Data.StrMap as Sm
+import Effect (Effect)
+import Effect.Aff (Aff, runAff)
+import Effect.Aff.Class (class MonadAff)
+import Effect.Now (now)
+import Effect.Random (random)
+import Effect.Ref (Ref, read, write, modify)
+import Foreign.Object (Object)
+import Foreign.Object as FO
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Web.HTML (HTMLElement)
 
 -- | Effectful knot of autocomplete functions. It's needed because
 -- | `languageTools.addCompleter` is global and adds completer to
 -- | all editors
-foreign import completeFns ∷ ∀ eff. Ref (StrMap (CompleteFn eff))
+foreign import completeFns ∷ Ref (Object CompleteFn)
 
 -- | This flag is used to determine if `languageTools` initialized
 foreign import initialized ∷ Ref Boolean
@@ -49,23 +46,22 @@ foreign import focused ∷ Ref String
 
 -- | Get `dataset` property of element
 foreign import dataset
-  ∷ ∀ eff
-  . HTMLElement
-  → Eff (dom ∷ DOM | eff) (StrMap String)
+  ∷ HTMLElement
+  → Effect (Object String)
 
 -- | Take completion function for currently selected component
-completeFnFocused ∷ ∀ eff. Eff (AceEffects eff) (CompleteFn eff)
+completeFnFocused ∷ Effect CompleteFn
 completeFnFocused = do
-  focusedKey ← readRef focused
-  mFns ← readRef completeFns
-  maybe (pure emptyCompleteFn) pure $ Sm.lookup focusedKey mFns
+  focusedKey ← read focused
+  mFns ← read completeFns
+  maybe (pure emptyCompleteFn) pure $ FO.lookup focusedKey mFns
   where
-  emptyCompleteFn ∷ CompleteFn eff
-  emptyCompleteFn _ _ _ _ = pure []
+    emptyCompleteFn ∷ CompleteFn
+    emptyCompleteFn _ _ _ _ = pure []
 
 -- | Set autocomplete resume
 setAutocompleteResume
-  ∷ ∀ eff. Maybe Autocomplete → Editor → Eff (AceEffects eff) Unit
+  ∷ Maybe Autocomplete → Editor → Effect Unit
 setAutocompleteResume Nothing editor = do
   Editor.setEnableBasicAutocompletion false editor
   Editor.setEnableLiveAutocompletion false editor
@@ -77,14 +73,14 @@ setAutocompleteResume (Just Live) editor = do
   Editor.setEnableBasicAutocompletion true editor
 
 -- | Language tools and autocomplete initializer. Runs once.
-enableAutocomplete ∷ ∀ eff. Eff (AceEffects eff) Unit
+enableAutocomplete ∷ Effect Unit
 enableAutocomplete = do
-  languageToolsInitialized ← readRef initialized
+  languageToolsInitialized ← read initialized
   when (not languageToolsInitialized) do
     completer ← Completer.mkCompleter globalCompleteFn
     tools ← LanguageTools.languageTools
     LanguageTools.addCompleter completer tools
-    writeRef initialized true
+    write true initialized
   where
   globalCompleteFn editor session position prefix cb = do
     fn ← completeFnFocused
@@ -93,7 +89,7 @@ enableAutocomplete = do
       $ fn editor session position prefix
 
 -- | Generate unique key for component
-genKey ∷ ∀ eff. Eff (now ∷ NOW, random ∷ RANDOM | eff) String
+genKey ∷ Effect String
 genKey = do
   rn1 ← random
   rn2 ← random
@@ -101,16 +97,6 @@ genKey = do
   pure $ show rn1 <> show (unwrap (unInstant instant)) <> show rn2
 
 data Autocomplete = Live | Basic
-
-type AceEffects eff =
-  ( random ∷ RANDOM
-  , now ∷ NOW
-  , ref ∷ REF
-  , ace ∷ ACE
-  , avar ∷ AVAR
-  , dom ∷ DOM
-  | eff
-  )
 
 -- | Ace query algebra
 -- | - `SetElement` - used to capture a reference to the component's element
@@ -130,7 +116,7 @@ data AceQuery a
   | GetText (String → a)
   | SetText String a
   | SetAutocomplete (Maybe Autocomplete) a
-  | SetCompleteFn (∀ eff. CompleteFn eff) a
+  | SetCompleteFn CompleteFn a
   | GetEditor (Maybe Editor → a)
   | HandleChange (H.SubscribeStatus -> a)
 
@@ -140,12 +126,12 @@ data AceMessage = TextChanged String
 
 -- | The type for autocomplete function s. Takes editor, session, text position,
 -- | prefix, and returns array of possible completions in the `Aff` monad.
-type CompleteFn eff
+type CompleteFn
   = Editor
   → EditSession
   → Position
   → String
-  → Aff (AceEffects eff) (Array Completion)
+  → Aff (Array Completion)
 
 -- | Ace component state.
 -- | - `key` - unique key of this instance
@@ -166,8 +152,8 @@ initialState =
 
 -- | The Ace component.
 aceComponent
-  ∷ ∀ eff m
-  . MonadAff (AceEffects eff) m
+  ∷ ∀ m
+  . MonadAff m
   ⇒ (Editor → m Unit)
   → Maybe Autocomplete
   → H.Component HH.HTML AceQuery Unit AceMessage m
@@ -184,8 +170,9 @@ aceComponent setup resume =
 render ∷ AceState → H.ComponentHTML AceQuery
 render = const $ HH.div [ HP.ref (H.RefLabel "container") ] []
 
-eval ∷ ∀ eff m
- . MonadAff (AceEffects eff) m
+eval
+ ∷ ∀ m
+ . MonadAff m
  ⇒ (Editor → m Unit)
  → Maybe Autocomplete
  → AceQuery
@@ -194,22 +181,22 @@ eval setup resume = case _ of
 
   Init next → do
     H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el → do
-      key ← H.gets _.key >>= maybe (H.liftEff genKey) pure
-      editor ← H.liftEff $ Ace.editNode el Ace.ace
+      key ← H.gets _.key >>= maybe (H.liftEffect genKey) pure
+      editor ← H.liftEffect $ Ace.editNode el Ace.ace
       H.put { key: Just key, editor: Just editor }
-      H.liftEff do
+      H.liftEffect do
         enableAutocomplete
         setAutocompleteResume resume editor
-        Editor.onFocus editor $ writeRef focused key
-      session ← H.liftEff $ Editor.getSession editor
-      H.subscribe $ H.eventSource_ (Session.onChange session) (H.request HandleChange)
+        Editor.onFocus editor $ write key focused
+      session ← H.liftEffect $ Editor.getSession editor
+      H.subscribe $ H.eventSource_ (\f -> Session.onChange session (\_ -> f)) (H.request HandleChange)
       H.lift $ setup editor
     pure next
 
   Quit next → do
     H.gets _.key
       >>= traverse_ \key →
-      H.liftEff $ modifyRef completeFns $ Sm.delete key
+      H.liftEffect $ modify (FO.delete key) completeFns
     pure next
 
   GetEditor k →
@@ -221,20 +208,20 @@ eval setup resume = case _ of
   SetText text next → do
     H.gets _.editor
       >>= traverse_ \editor → do
-        current ← H.liftEff $ Editor.getValue editor
+        current ← H.liftEffect $ Editor.getValue editor
         when (text /= current) $ void
-          $ H.liftEff (Editor.setValue text Nothing editor)
+          $ H.liftEffect (Editor.setValue text Nothing editor)
     pure next
 
   SetAutocomplete mbAc next → do
     H.gets _.editor
-      >>= traverse_ (H.liftEff <<< setAutocompleteResume mbAc)
+      >>= traverse_ (H.liftEffect <<< setAutocompleteResume mbAc)
     pure next
 
   SetCompleteFn fn next → do
     H.gets _.key
       >>= traverse_ \key →
-      H.liftEff $ modifyRef completeFns $ Sm.insert key fn
+      H.liftEffect $ modify (FO.insert key fn) completeFns
     pure next
 
   HandleChange k → do
@@ -245,4 +232,4 @@ eval setup resume = case _ of
 
   getText :: DSL m String
   getText =
-    maybe (pure "") (H.liftEff <<< Editor.getValue) =<< H.gets _.editor
+    maybe (pure "") (H.liftEffect <<< Editor.getValue) =<< H.gets _.editor
