@@ -2,11 +2,9 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Random (RANDOM)
-import Control.Monad.Eff.Now (NOW)
+import Effect (Effect)
+import Effect.Aff (Aff)
+import Effect.Class (liftEffect)
 
 import Data.Maybe (Maybe(..))
 
@@ -19,7 +17,7 @@ import Halogen.VDom.Driver (runUI)
 import Ace.Editor as Editor
 import Ace.EditSession as Session
 import Ace.Halogen.Component (AceQuery, AceMessage(..), aceComponent)
-import Ace.Types (ACE, Editor)
+import Ace.Types (Editor)
 
 data Query a
   = HandleMessage AceMessage a
@@ -35,13 +33,10 @@ initialState =
 
 type AceSlot = Unit
 
-type MainEffects = HA.HalogenEffects (random ∷ RANDOM, now ∷ NOW, ace ∷ ACE)
-type MainAff = Aff MainEffects
+type MainHtml = H.ParentHTML Query AceQuery AceSlot Aff
+type MainDSL = H.ParentDSL State Query AceQuery AceSlot Void Aff
 
-type MainHtml = H.ParentHTML Query AceQuery AceSlot MainAff
-type MainDSL = H.ParentDSL State Query AceQuery AceSlot Void MainAff
-
-ui ∷ H.Component HH.HTML Query Unit Void MainAff
+ui ∷ H.Component HH.HTML Query Unit Void Aff
 ui =
   H.parentComponent
     { initialState: const initialState
@@ -58,11 +53,11 @@ ui =
       , HH.div_ [ HH.text state.text ]
       ]
 
-  component :: State → H.Component HH.HTML AceQuery Unit AceMessage MainAff
+  component :: State → H.Component HH.HTML AceQuery Unit AceMessage Aff
   component state = aceComponent (initEditor state) Nothing
 
-  initEditor ∷ State → Editor → MainAff Unit
-  initEditor state editor = liftEff $ do
+  initEditor ∷ State → Editor → Aff Unit
+  initEditor state editor = liftEffect $ do
     session ← Editor.getSession editor
     Session.setMode "ace/mode/yaml" session
     _ ← Editor.setValue state.text Nothing editor
@@ -71,8 +66,8 @@ ui =
   eval ∷ Query ~> MainDSL
   eval = case _ of
     HandleMessage (TextChanged text) next → do
-      H.modify (_ { text = text })
+      _ <- H.modify (_ { text = text })
       pure next
 
-main ∷ Eff MainEffects Unit
+main ∷ Effect Unit
 main = HA.runHalogenAff (runUI ui unit =<< HA.awaitBody)

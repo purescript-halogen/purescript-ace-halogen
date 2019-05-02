@@ -27,10 +27,23 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-ace": "^4.0.0",
-    "purescript-halogen": "^3.1.1",
-    "purescript-now": "^3.0.0",
-    "purescript-random": "^3.0.0",
-    "purescript-refs": "^3.0.0"
+    "purescript-ace": "^7.0.0",
+    "purescript-halogen": "4.0.0",
+    "purescript-now": "^4.0.0",
+    "purescript-random": "^4.0.0",
+    "purescript-refs": "^4.1.0",
+    "purescript-aff": "^5.1.1",
+    "purescript-foreign-object": "^2.0.1",
+    "purescript-prelude": "^4.1.1"
+  },
+  "resolutions": {
+    "purescript-foreign-object": "^2.0.1",
+    "purescript-typelevel-prelude": "^4.0.0",
+    "purescript-web-html": "^2.0.0",
+    "purescript-web-uievents": "^2.0.0",
+    "purescript-web-file": "^2.0.0",
+    "purescript-web-dom": "^2.0.0",
+    "purescript-web-storage": "^3.0.0",
+    "purescript-web-events": "^2.0.0"
   }
 }
